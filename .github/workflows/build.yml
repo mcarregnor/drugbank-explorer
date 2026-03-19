@@ -22,28 +22,54 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # Aceptamos licencias explícitamente y definimos paquetes
-          packages: 'platforms;android-34 build-tools;34.0.0'
+          packages: 'platforms;android-34 build-tools;34.0.0 platform-tools'
 
       - name: Accept Android Licenses
         run: |
-          # Forzamos la aceptación de todas las licencias mediante un pipe de "yes"
           yes | sdkmanager --licenses || true
 
-      - name: Generate Gradle wrapper
+      - name: Detect Project Root and Generate Wrapper
         run: |
-          # Solo genera el wrapper si no existe en el repo
+          # Buscamos dónde está el archivo settings.gradle
+          PROJECT_ROOT=$(find . -name "settings.gradle*" -printf '%h' -quit)
+          
+          if [ -z "$PROJECT_ROOT" ]; then
+            echo "ERROR: No se encontró ningún archivo settings.gradle en el repositorio."
+            echo "Asegúrate de haber subido los archivos de tu proyecto Android."
+            ls -R
+            exit 1
+          fi
+          
+          echo "Proyecto encontrado en: $PROJECT_ROOT"
+          cd "$PROJECT_ROOT"
+          
+          # Generamos el wrapper si no existe
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.4
           fi
           chmod +x gradlew
+          
+          # Guardamos la ruta para los siguientes pasos
+          echo "project_path=$PROJECT_ROOT" >> $GITHUB_ENV
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build Release APK
+        run: |
+          cd ${{ env.project_path }}
+          ./gradlew assembleRelease
 
-      - name: Upload APK artifact
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: ${{ env.project_path }}/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: DrugBankExplorer-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: DrugBankExplorer-Release
+          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
           retention-days: 30
