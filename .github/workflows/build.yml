@@ -28,32 +28,33 @@ jobs:
         run: |
           yes | sdkmanager --licenses || true
 
-      - name: Prepare Gradle and Build
+      - name: Force Gradle Install and Build
         run: |
-          # 1. Buscar la carpeta que contiene el proyecto de Android
-          PROJECT_DIR=$(find . -name "build.gradle*" -printf '%h' -quit)
+          # 1. Encontrar la carpeta donde está build.gradle
+          PROJECT_ROOT=$(find . -name "build.gradle*" -printf '%h' -quit)
           
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Error: No se encontró un archivo build.gradle. Asegúrate de subir tu proyecto."
+          if [ -z "$PROJECT_ROOT" ]; then
+            echo "ERROR: No se encontró build.gradle. ¿Subiste los archivos del proyecto?"
+            ls -R
             exit 1
           fi
           
-          echo "Proyecto encontrado en: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+          echo "Proyecto detectado en: $PROJECT_ROOT"
+          cd "$PROJECT_ROOT"
 
-          # 2. Generar el wrapper (el archivo gradlew que falta)
-          gradle wrapper --gradle-version 8.4
+          # 2. Instalar Gradle en el corredor de GitHub (porque no está el wrapper)
+          sudo apt-get update && sudo apt-get install -y gradle
           
-          # 3. Darle permisos de ejecución
+          # 3. Generar un nuevo wrapper localmente en el servidor
+          gradle wrapper --gradle-version 8.4
           chmod +x gradlew
           
-          # 4. Compilar el APK
+          # 4. Compilar
           ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DrugBankExplorer-debug
-          # Buscamos el APK generado sin importar la ruta exacta
           path: "**/build/outputs/apk/debug/*.apk"
           retention-days: 30
