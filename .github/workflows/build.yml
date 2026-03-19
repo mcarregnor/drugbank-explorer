@@ -21,14 +21,21 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Aceptamos licencias explícitamente y definimos paquetes
+          packages: 'platforms;android-34 build-tools;34.0.0'
 
-      - name: Install Android platform and build tools
+      - name: Accept Android Licenses
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          # Forzamos la aceptación de todas las licencias mediante un pipe de "yes"
+          yes | sdkmanager --licenses || true
 
       - name: Generate Gradle wrapper
         run: |
-          gradle wrapper --gradle-version 8.4
+          # Solo genera el wrapper si no existe en el repo
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.4
+          fi
           chmod +x gradlew
 
       - name: Build Debug APK
