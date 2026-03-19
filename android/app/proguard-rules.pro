@@ -1,0 +1,2 @@
+-keep class com.ucchristus.drugbank.** { *; }
+-keepattributes *Annotation*

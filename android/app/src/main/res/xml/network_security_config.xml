@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">pubchem.ncbi.nlm.nih.gov</domain>
+        <domain includeSubdomains="true">rxnav.nlm.nih.gov</domain>
+        <domain includeSubdomains="true">api.fda.gov</domain>
+    </domain-config>
+</network-security-config>

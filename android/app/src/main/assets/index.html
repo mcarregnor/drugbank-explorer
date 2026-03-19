@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<title>DrugBank Explorer · UC CHRISTUS</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#21262d;
+  --text:#c9d1d9;--muted:#8b949e;--hint:#6e7681;
+  --accent:#00d4ff;--accent-dim:#00d4ff18;--accent-mid:#00d4ff44;
+  --green:#3fb950;--red:#f85149;--yellow:#e3b341;--blue:#58a6ff;--purple:#c9b1ff;--orange:#f0883e;
+  --green-bg:#1a4731;--red-bg:#4a1824;--yellow-bg:#4a3319;--blue-bg:#1b3a5c;--purple-bg:#2a1a3a;--orange-bg:#3a2010;
+  --green-bd:#3fb95055;--red-bd:#f8514955;--yellow-bd:#e3b34155;--blue-bd:#58a6ff55;--purple-bd:#c9b1ff44;--orange-bd:#f0883e55;
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;overflow-x:hidden}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* ── Nav bar ── */
+.navbar{background:#0d1117;border-bottom:1px solid var(--border2);
+  padding:12px 16px calc(12px + var(--safe-top)) 16px;padding-top:calc(12px + var(--safe-top));
+  position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px}
+.navbar-title{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:1rem;font-weight:600;flex:1}
+.navbar-sub{color:var(--muted);font-size:0.65rem}
+
+/* ── Tab bar ── */
+.tabbar{display:flex;background:var(--bg);border-bottom:1px solid var(--border2);overflow-x:auto;
+  position:sticky;top:57px;z-index:99}
+.tabbar::-webkit-scrollbar{display:none}
+.tbar-btn{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;
+  font-size:0.72rem;padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;
+  white-space:nowrap;transition:all .15s;flex-shrink:0}
+.tbar-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-page{display:none;padding:16px;animation:fadeIn .2s ease}
+.tab-page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Search ── */
+.search-row{display:flex;gap:8px;margin-bottom:16px}
+.q-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;
+  padding:11px 13px;outline:none;-webkit-appearance:none;transition:border .2s}
+.q-input:focus{border-color:var(--accent)}
+.q-btn{background:var(--accent-dim);border:1px solid var(--accent-mid);color:var(--accent);
+  font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:600;
+  padding:11px 16px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:all .15s;
+  -webkit-appearance:none}
+.q-btn:active{background:var(--accent-mid)}
+.q-btn:disabled{opacity:.4}
+
+/* ── Cards ── */
+.drug-header{background:linear-gradient(135deg,#0f2027,#1a3040,#2c5364);
+  border:1px solid var(--accent-mid);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.drug-name{font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:600;color:var(--accent)}
+.drug-id{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);margin-top:3px}
+.drug-badges{margin-top:9px;display:flex;flex-wrap:wrap;gap:4px}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;
+  font-size:0.68rem;font-weight:600;font-family:'IBM Plex Mono',monospace}
+.b-approved{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-withdrawn{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.b-illicit{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-bd)}
+.b-nutra{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.b-default{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+.b-atc{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
+.b-food{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-action{background:#1a3a5c;color:#58a6ff;border:1px solid #58a6ff44;font-size:0.66rem;padding:2px 6px}
+.b-major{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.b-moderate{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-bd)}
+.b-minor{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.b-unknown{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+
+/* ── Metrics grid ── */
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.metric-box{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:8px;padding:10px 10px;text-align:center}
+.metric-val{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;color:var(--accent);font-weight:600;word-break:break-all}
+.metric-lbl{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+
+/* ── Info cards ── */
+.icard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:9px}
+.icard h4{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:0.64rem;
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}
+.icard p,.icard li{color:var(--text);font-size:0.83rem;line-height:1.6;margin:0}
+.icard ul{padding-left:14px}
+.badges-wrap{display:flex;flex-wrap:wrap;gap:4px}
+
+/* ── States ── */
+.empty{background:var(--bg2);border:1px dashed var(--border);border-radius:10px;
+  padding:40px 20px;text-align:center;color:var(--muted)}
+.empty-icon{font-size:1.8rem;margin-bottom:8px}
+.empty-hint{font-size:0.71rem;color:var(--hint);margin-top:6px;line-height:1.5}
+.error-box{background:#4a182420;border:1px solid var(--red-bd);border-radius:8px;
+  padding:12px 14px;color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:0.79rem;line-height:1.6}
+.spinner-wrap{text-align:center;padding:48px 16px}
+.spinner{display:inline-block;width:26px;height:26px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-label{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.74rem;margin-top:8px}
+
+/* ── Drug inner tabs ── */
+.dtabs-nav{display:flex;border-bottom:1px solid var(--border);margin-bottom:12px;overflow-x:auto;gap:0}
+.dtabs-nav::-webkit-scrollbar{display:none}
+.dtab-btn{background:none;border:none;color:var(--muted);font-size:0.74rem;
+  padding:8px 11px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s}
+.dtab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.dtab-pane{display:none}.dtab-pane.active{display:block}
+.id-row{display:flex;justify-content:space-between;align-items:center;
+  padding:6px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;margin-bottom:3px}
+.id-lbl{color:var(--muted);font-size:0.78rem}
+.id-val{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:0.76rem;word-break:break-all;max-width:60%;text-align:right}
+.tcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:6px}
+.tname{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:0.82rem;font-weight:600}
+.tsub{color:var(--muted);font-size:0.72rem;margin-top:2px}
+.tacts{margin-top:4px;display:flex;flex-wrap:wrap;gap:3px}
+
+/* ══ INTERACTION CHECKER ══ */
+.ia-section{margin-bottom:16px}
+.ia-title{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:0.8rem;
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.drug-slots{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.drug-slot{display:flex;gap:6px;align-items:center}
+.slot-num{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:0.75rem;
+  width:20px;text-align:center;flex-shrink:0}
+.slot-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:0.82rem;
+  padding:9px 11px;outline:none;-webkit-appearance:none;transition:border .2s}
+.slot-input:focus{border-color:var(--accent)}
+.slot-input::placeholder{color:var(--hint)}
+.slot-status{width:18px;height:18px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.65rem}
+.ss-ok{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)}
+.ss-err{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)}
+.ss-empty{background:var(--bg3);border:1px solid var(--border)}
+.ia-btn{width:100%;background:linear-gradient(135deg,#0f3040,#1a4a60);border:1px solid var(--accent-mid);
+  color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:600;
+  padding:13px;border-radius:10px;cursor:pointer;transition:all .15s;-webkit-appearance:none;margin-bottom:14px}
+.ia-btn:active{background:linear-gradient(135deg,#1a4a60,#2a6080)}
+.ia-btn:disabled{opacity:.4}
+
+/* Interaction result card */
+.ix-header{display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:12px 14px;margin-bottom:8px}
+.ix-pair{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:0.82rem;font-weight:600}
+.ix-card{background:var(--bg2);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.ix-card-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--border2)}
+.ix-severity{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sev-major{background:var(--red)}
+.sev-moderate{background:var(--yellow)}
+.sev-minor{background:var(--green)}
+.sev-unknown{background:var(--muted)}
+.ix-pair-name{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:0.81rem;font-weight:600}
+.ix-body{padding:11px 13px}
+.ix-desc{color:var(--muted);font-size:0.8rem;line-height:1.6;margin-bottom:6px}
+.ix-mgmt{color:var(--text);font-size:0.79rem;line-height:1.55}
+.ix-mgmt-label{color:var(--accent);font-size:0.68rem;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-top:8px;margin-bottom:3px}
+.ix-none{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;
+  padding:14px;text-align:center;color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:0.8rem}
+.ia-legend{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:0.72rem;color:var(--muted)}
+.leg-dot{width:9px;height:9px;border-radius:50%}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<div class="navbar">
+  <div>
+    <div class="navbar-title">💊 DrugBank Explorer</div>
+    <div class="navbar-sub mono">v2.2 · UC CHRISTUS · NIH/FDA APIs</div>
+  </div>
+</div>
+
+<!-- ── TAB BAR ── -->
+<div class="tabbar">
+  <button class="tbar-btn active" onclick="page('search',this)">🔍 Búsqueda</button>
+  <button class="tbar-btn" onclick="page('interact',this)">⚡ Interacciones</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: BÚSQUEDA -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="pg-search" class="tab-page active">
+  <div class="search-row">
+    <input id="queryInput" class="q-input" type="text"
+      placeholder="ibuprofen · metformin · warfarin…"
+      autocomplete="off" spellcheck="false">
+    <button id="searchBtn" class="q-btn" onclick="doSearch()">Buscar</button>
+  </div>
+
+  <!-- Quick links -->
+  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">
+    <script>
+    ['ibuprofen','metformin','warfarin','tramadol','aspirin','omeprazole','atorvastatin','amoxicillin'].forEach(n=>{
+      document.write(`<button onclick="quickSearch('${n}')" style="background:var(--bg2);border:1px solid var(--border);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:0.68rem;padding:4px 10px;border-radius:6px;cursor:pointer">${n}</button>`);
+    });
+    </script>
+  </div>
+
+  <div id="mainArea">
+    <div class="empty">
+      <div class="empty-icon">⚗️</div>
+      <div>Ingresa el nombre de un medicamento</div>
+      <div class="empty-hint">Datos en tiempo real desde PubChem · RxNorm · OpenFDA (NIH/FDA)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- PAGE: INTERACCIONES -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div id="pg-interact" class="tab-page">
+  <div class="ia-section">
+    <div class="ia-title">Verificador de interacciones fármaco-fármaco</div>
+    <div class="ia-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div> Mayor</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div> Moderada</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div> Menor</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--muted)"></div> Desconocida</div>
+    </div>
+    <div class="drug-slots" id="drugSlots">
+      <div class="drug-slot">
+        <div class="slot-num">1</div>
+        <input class="slot-input" placeholder="Fármaco 1 (ej: warfarin)" oninput="slotChange(this,0)">
+        <div class="slot-status ss-empty" id="ss0"></div>
+      </div>
+      <div class="drug-slot">
+        <div class="slot-num">2</div>
+        <input class="slot-input" placeholder="Fármaco 2 (ej: aspirin)" oninput="slotChange(this,1)">
+        <div class="slot-status ss-empty" id="ss1"></div>
+      </div>
+      <div class="drug-slot">
+        <div class="slot-num">3</div>
+        <input class="slot-input" placeholder="Fármaco 3 (opcional)" oninput="slotChange(this,2)">
+        <div class="slot-status ss-empty" id="ss2"></div>
+      </div>
+      <div class="drug-slot">
+        <div class="slot-num">4</div>
+        <input class="slot-input" placeholder="Fármaco 4 (opcional)" oninput="slotChange(this,3)">
+        <div class="slot-status ss-empty" id="ss3"></div>
+      </div>
+      <div class="drug-slot">
+        <div class="slot-num">5</div>
+        <input class="slot-input" placeholder="Fármaco 5 (opcional)" oninput="slotChange(this,4)">
+        <div class="slot-status ss-empty" id="ss4"></div>
+      </div>
+    </div>
+    <button class="ia-btn" id="iaBtn" onclick="checkInteractions()">⚡ Verificar Interacciones</button>
+  </div>
+  <div id="iaResult">
+    <div class="empty">
+      <div class="empty-icon">💊</div>
+      <div>Ingresa 2–5 fármacos y presiona Verificar</div>
+      <div class="empty-hint">Base de datos curada + consulta OpenFDA en tiempo real</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   DRUG INTERACTION DATABASE (curada + evidencia)
+   Severity: major | moderate | minor
+   ════════════════════════════════════════════════════════════ */
+const IX_DB = {
+  /* ── Warfarin interactions ── */
+  "warfarin+aspirin":     {sev:"major",   desc:"Riesgo hemorrágico sinérgico: la aspirina inhibe COX-1 plaquetaria de forma irreversible y desplaza la warfarina de proteínas plasmáticas, potenciando el efecto anticoagulante.", mgmt:"Evitar combinación. Si imprescindible (cardiopatía isquémica), usar dosis mínima de aspirina (75–100 mg/día) con monitorización estrecha del INR y vigilancia de hemorragia GI."},
+  "warfarin+ibuprofen":   {sev:"major",   desc:"Los AINEs desplazan la warfarina de proteínas plasmáticas, inhiben la agregación plaquetaria y pueden causar lesión gástrica, multiplicando el riesgo de hemorragia mayor.", mgmt:"Contraindicación relativa. Usar paracetamol como alternativa analgésica. Si inevitable, reducir dosis AINE, monitorizar INR en 3–5 días y proteger mucosa gástrica con IBP."},
+  "warfarin+amiodarone":  {sev:"major",   desc:"La amiodarona inhibe potentemente CYP2C9 (principal enzima metabolizadora de S-warfarina) y CYP3A4, aumentando el AUC de warfarina hasta 2–3 veces. Riesgo de sobredosis anticoagulante.", mgmt:"Reducir dosis de warfarina 30–50% al iniciar amiodarona. Monitorizar INR cada 2–3 días las primeras 2 semanas, luego semanal 4 semanas. Efecto persiste semanas tras suspender amiodarona."},
+  "warfarin+fluconazole": {sev:"major",   desc:"Fluconazol es inhibidor potente de CYP2C9. Puede duplicar los niveles de S-warfarina y el INR en 3–5 días del inicio del antifúngico.", mgmt:"Monitorizar INR diariamente los primeros 3–5 días. Considerar reducción de dosis warfarina 25–50%. Alternativamente, usar terbinafina tópica o fluconazol dosis única cuando sea posible."},
+  "warfarin+rifampicin":  {sev:"major",   desc:"Rifampicina es inductor potente de CYP2C9 y CYP3A4, reduciendo los niveles de warfarina hasta 80%. El efecto aparece en 5–7 días y persiste 2–4 semanas post-suspensión.", mgmt:"Aumentar significativamente la dosis de warfarina con control INR cada 3–5 días al inicio y al suspender rifampicina. Considerar HBPM como puente si el INR es inestable."},
+  "warfarin+metronidazole":{sev:"major",  desc:"Metronidazol inhibe CYP2C9 y reduce el metabolismo intestinal de la vitamina K, elevando el INR significativamente.", mgmt:"Monitorizar INR cada 2–3 días durante y 5–7 días tras el tratamiento con metronidazol. Reducir dosis de warfarina anticipadamente."},
+  /* ── Aspirin & NSAIDs ── */
+  "aspirin+ibuprofen":    {sev:"moderate",desc:"El ibuprofeno bloquea de forma competitiva el sitio de acetilación Ser530 de COX-1 en plaquetas, antagonizando el efecto antiagregante irreversible de la aspirina de dosis baja. Relevancia clínica en prevención cardiovascular.", mgmt:"Administrar aspirina entérica (75–100 mg) al menos 2 horas antes del ibuprofeno, o idealmente usar naproxeno (no compite por el mismo sitio) como AINE alternativo."},
+  "aspirin+tramadol":     {sev:"minor",   desc:"Interacción farmacodinámica menor. Ambos tienen efecto sobre la hemostasia (aspirina antiplaquetaria) y el dolor. Puede haber ligera potenciación analgésica.", mgmt:"Combinación generalmente segura a dosis terapéuticas habituales. Vigilar síntomas GI."},
+  "ibuprofen+tramadol":   {sev:"minor",   desc:"Sinergismo analgésico beneficioso (mecanismos complementarios: inhibición COX vs. opioidérgico/monoaminérgico). Bajo riesgo de interacción adversa.", mgmt:"Combinación frecuentemente utilizada. Vigilar función renal con uso prolongado de ibuprofeno. Monitorizar signos de toxicidad opioide."},
+  /* ── Tramadol high-risk combinations ── */
+  "tramadol+ssri":        {sev:"major",   desc:"Alto riesgo de síndrome serotoninérgico: tramadol inhibe recaptación de serotonina + ISRS potencia serotoninérgicamente. Riesgo de convulsiones por doble acción en umbral convulsivo.", mgmt:"Evitar combinación cuando sea posible. Si imprescindible, usar dosis mínima de tramadol, monitorizar síntomas (agitación, mioclonías, diaforesis, hipertermia) y disponer de medios de soporte."},
+  "tramadol+sertraline":  {sev:"major",   desc:"Alto riesgo de síndrome serotoninérgico. Sertraline es inhibidor de recaptación de serotonina; tramadol inhibe recaptación de serotonina Y norepinefrina. Riesgo de convulsiones.", mgmt:"Evitar. Si indispensable, usar dosis mínimas con supervisión estrecha. Considerar alternativa analgésica no serotoninérgica (paracetamol, AINEs)."},
+  "tramadol+fluoxetine":  {sev:"major",   desc:"Fluoxetina inhibe CYP2D6, reduciendo la conversión de tramadol al metabolito activo M1 (analgésico) y aumentando niveles del fármaco padre. Además, riesgo de síndrome serotoninérgico.", mgmt:"Contraindicación relativa. Monitorizar toxicidad serotoninérgica y eficacia analgésica reducida. Considerar alternativa analgésica."},
+  "tramadol+carbamazepine":{sev:"moderate",desc:"Carbamazepina induce CYP3A4, reduciendo niveles de tramadol y M1 hasta 50%. Menor eficacia analgésica. Además, ambos reducen el umbral convulsivo.", mgmt:"Aumentar vigilancia de analgesia insuficiente. Monitorizar convulsiones. Considerar ajuste de dosis o uso de analgésico alternativo."},
+  /* ── Metformin ── */
+  "metformin+alcohol":    {sev:"major",   desc:"El alcohol inhibe la gluconeogénesis hepática y puede potenciar el efecto hipoglucemiante. Riesgo de acidosis láctica por interferencia con el metabolismo del lactato hepático.", mgmt:"Evitar consumo habitual de alcohol con metformina. Advertir al paciente sobre riesgo de hipoglucemia e instrucciones de actuación."},
+  "metformin+cimetidine": {sev:"moderate",desc:"Cimetidina inhibe la secreción tubular renal de metformina (transportador OCT2), aumentando el AUC de metformina hasta un 50% con riesgo de acumulación.", mgmt:"Monitorizar glucemia y función renal. Considerar omeprazol o ranitidina como alternativas (menor interacción con OCT2)."},
+  "metformin+ibuprofen":  {sev:"moderate",desc:"Los AINEs pueden deteriorar la función renal, especialmente en pacientes vulnerables, reduciendo el aclaramiento de metformina y aumentando el riesgo de acumulación y acidosis láctica.", mgmt:"Monitorizar función renal (creatinina, TFG) con uso concomitante prolongado. Usar dosis mínima efectiva de AINE. Suspender metformina si TFG <45 mL/min."},
+  /* ── Statins ── */
+  "atorvastatin+clarithromycin":{sev:"major",desc:"Claritromicina inhibe potentemente CYP3A4, aumentando los niveles plasmáticos de atorvastatina hasta 4–5 veces. Riesgo elevado de miopatía y rabdomiólisis.", mgmt:"Suspender atorvastatina temporalmente durante el tratamiento con claritromicina. Alternativamente, usar azitromicina (no inhibe CYP3A4) o una estatina no metabolizada por CYP3A4 (pravastatina, rosuvastatina)."},
+  "atorvastatin+amiodarone":{sev:"moderate",desc:"Amiodarona inhibe CYP3A4 y P-glucoproteína, aumentando la exposición a atorvastatina y el riesgo de miopatía.", mgmt:"Limitar dosis de atorvastatina a 40 mg/día. Monitorizar CPK y síntomas musculares (mialgia, debilidad). Considerar estatina alternativa menos dependiente de CYP3A4."},
+  "simvastatin+amiodarone":{sev:"major",   desc:"Amiodarona inhibe CYP3A4, elevando los niveles de simvastatina significativamente. La FDA contraindica simvastatina >20 mg/día con amiodarona por riesgo de rabdomiólisis.", mgmt:"Limitar simvastatina a máximo 20 mg/día o cambiar a rosuvastatina/pravastatina que no se metabolizan predominantemente por CYP3A4."},
+  /* ── Cardiovascular ── */
+  "amlodipine+simvastatin":{sev:"moderate",desc:"Amlodipino inhibe CYP3A4, aumentando la exposición a simvastatina hasta 77%. Riesgo incrementado de miopatía.", mgmt:"FDA limita simvastatina a 20 mg/día con amlodipino. Monitorizar CPK y síntomas musculares."},
+  "lisinopril+ibuprofen": {sev:"moderate",desc:"Los AINEs antagonizan el efecto antihipertensivo de los IECA al bloquear la síntesis de prostaglandinas vasodilatadoras renales. Además, puede precipitar insuficiencia renal aguda en pacientes de riesgo.", mgmt:"Monitorizar presión arterial y función renal con uso concomitante. Usar paracetamol como alternativa analgésica en pacientes con IECA."},
+  "lisinopril+spironolactone":{sev:"major",desc:"Riesgo de hiperpotasemia severa: ambos elevan el potasio sérico por mecanismos complementarios (inhibición aldosterona + ahorro de K⁺ renal). Puede causar arritmias letales.", mgmt:"Monitorizar potasio sérico cada 1–2 semanas al inicio. Evitar en pacientes con IRC moderada-severa (TFG <45) o potasio basal >5 mEq/L."},
+  "losartan+ibuprofen":   {sev:"moderate",desc:"Similar a IECA + AINEs: ibuprofeno antagoniza el efecto antihipertensivo del losartán y puede provocar deterioro de función renal. La combinación ARA-II + AINE + diurético ('triple terapia') está contraindicada.", mgmt:"Evitar triple terapia. Monitorizar PA, creatinina y potasio. Paracetamol como alternativa analgésica preferida."},
+  /* ── Antidepressants ── */
+  "sertraline+tramadol":  {sev:"major",   desc:"Ver tramadol+sertraline. Combinación con alto riesgo de síndrome serotoninérgico y disminución del umbral convulsivo.", mgmt:"Evitar. Si necesario, vigilar síntomas serotoninérgicos (agitación, mioclonías, hipertermia, taquicardia) y disponer de medios de soporte."},
+  "fluoxetine+tramadol":  {sev:"major",   desc:"Ver tramadol+fluoxetine. Fluoxetina inhibe CYP2D6 (metabolismo de tramadol) y la suma de efectos serotoninérgicos es peligrosa.", mgmt:"Contraindicación relativa. Preferir analgésico alternativo."},
+  "sertraline+aspirin":   {sev:"moderate",desc:"Los ISRS reducen la activación plaquetaria al disminuir la captación de serotonina. La combinación con aspirina aumenta el riesgo de hemorragia gastrointestinal.", mgmt:"Usar con precaución. Considerar IBP (omeprazol) como gastroprotección. Vigilar signos de sangrado."},
+  "fluoxetine+aspirin":   {sev:"moderate",desc:"Ver sertraline+aspirin. Fluoxetina + aspirina: riesgo incrementado de sangrado GI.", mgmt:"Gastroprotección con IBP. Vigilar signos de hemorragia."},
+  /* ── Proton pump inhibitors ── */
+  "omeprazole+clopidogrel":{sev:"major",  desc:"Omeprazol inhibe CYP2C19, que es la enzima que activa el profármaco clopidogrel a su metabolito activo. Puede reducir el efecto antiagregante hasta 40%, con impacto en eventos cardiovasculares en pacientes con stent.", mgmt:"Preferir pantoprazol o rabeprazol (menores inhibidores de CYP2C19) en pacientes con clopidogrel. Evitar omeprazol y esomeprazol. Si IBP necesario, pantoprazol es la alternativa de elección."},
+  "omeprazole+methotrexate":{sev:"moderate",desc:"Los IBPs compiten con metotrexato por la excreción tubular renal activa, pudiendo aumentar sus niveles plasmáticos y toxicidad.", mgmt:"Suspender IBP 2–3 días antes de la dosis de metotrexato y reiniciar 2 días después, especialmente con metotrexato a dosis altas."},
+  /* ── Antibiotics ── */
+  "amoxicillin+warfarin":  {sev:"moderate",desc:"Los antibióticos de amplio espectro pueden alterar la flora intestinal y reducir la producción de vitamina K2 bacteriana, potenciando el efecto anticoagulante.", mgmt:"Monitorizar INR a los 3–5 días de iniciar antibiótico. Ajustar dosis de warfarina si es necesario."},
+  "ciprofloxacin+warfarin":{sev:"major",   desc:"Las quinolonas inhiben el metabolismo hepático de warfarina (CYP1A2) y pueden elevar el INR significativamente. Riesgo de hemorragia mayor.", mgmt:"Monitorizar INR 2–3 días tras iniciar ciprofloxacino. Reducir dosis de warfarina anticipadamente si es posible. Vigilar signos de sangrado."},
+  /* ── Paracetamol ── */
+  "paracetamol+warfarin":  {sev:"moderate",desc:"Paracetamol a dosis >2 g/día puede potenciar el efecto anticoagulante de warfarina por mecanismo no completamente elucidado (posible inhibición de enzimas de síntesis de factores de coagulación).", mgmt:"Usar dosis mínima eficaz de paracetamol (<2 g/día). Es la alternativa analgésica más segura con warfarina, pero requiere monitorización del INR si uso prolongado."},
+  "paracetamol+alcohol":   {sev:"major",   desc:"El alcohol induce CYP2E1, aumentando la formación del metabolito tóxico NAPQI del paracetamol, con riesgo de hepatotoxicidad severa incluso a dosis terapéuticas.", mgmt:"Contraindicar paracetamol en alcohólicos activos o consumo crónico de >3 bebidas/día. Reducir dosis máxima a 2 g/día en bebedores ocasionales."},
+  /* ── Gabapentin/pregabalin ── */
+  "gabapentin+tramadol":   {sev:"moderate",desc:"Sinergismo de depresión del SNC: gabapentina actúa sobre subunidades α2δ de canales de Ca²⁺ y tramadol tiene efecto opioide. Riesgo de sedación excesiva, depresión respiratoria.", mgmt:"Usar dosis mínimas efectivas de ambos. Monitorizar nivel de sedación y frecuencia respiratoria. Advertir al paciente de no conducir."},
+  "gabapentin+morphine":   {sev:"moderate",desc:"Potenciación opioide: gabapentina puede reducir la dosis de morfina necesaria pero ambos causan depresión del SNC. Interacción farmacodinámica.", mgmt:"Titular lentamente ambas dosis. Vigilar sedación y depresión respiratoria."},
+  /* ── Diuretics ── */
+  "furosemide+ibuprofen":  {sev:"moderate",desc:"Los AINEs antagonizan el efecto diurético y natriurético de la furosemida al inhibir las prostaglandinas renales vasodilatadoras. Pueden precipitar retención hidrosalina y deterioro renal.", mgmt:"Monitorizar tensión arterial, edemas, peso corporal y función renal. Minimizar uso de AINEs. Paracetamol como alternativa."},
+  "furosemide+aminoglycosides":{sev:"major",desc:"Riesgo de nefrotoxicidad y ototoxicidad sinérgicas. La combinación puede causar sordera irreversible e insuficiencia renal.", mgmt:"Evitar combinación cuando sea posible. Si imprescindible, monitorizar función renal, niveles plasmáticos de aminoglucósido y audición."},
+};
+
+/* ── Normalize drug name for lookup ── */
+function normDrug(s){
+  return s.toLowerCase().trim()
+    .replace(/acetaminophen/,'paracetamol')
+    .replace(/tylenol/,'paracetamol')
+    .replace(/advil|motrin/,'ibuprofen')
+    .replace(/celebrex/,'celecoxib')
+    .replace(/coumadin/,'warfarin')
+    .replace(/zoloft/,'sertraline')
+    .replace(/prozac/,'fluoxetine')
+    .replace(/lipitor/,'atorvastatin')
+    .replace(/glucophage/,'metformin')
+    .replace(/plavix/,'clopidogrel')
+    .replace(/prilosec|losec/,'omeprazole')
+    .replace(/cipro/,'ciprofloxacin')
+    .replace(/zithromax/,'azithromycin')
+    .replace(/lasix/,'furosemide')
+    .replace(/neurontin/,'gabapentin')
+    .replace(/ultram/,'tramadol')
+    .replace(/dilaudid|oxycontin/,'morphine');
+}
+
+/* ── Lookup both orderings ── */
+function lookupIx(a, b){
+  const k1 = `${a}+${b}`;
+  const k2 = `${b}+${a}`;
+  return IX_DB[k1] || IX_DB[k2] || null;
+}
+
+/* ── Also match partial/keyword ── */
+function fuzzyLookup(a, b){
+  // Try exact first
+  let ix = lookupIx(a, b);
+  if(ix) return ix;
+  // Try keyword matching
+  for(const [key, val] of Object.entries(IX_DB)){
+    const parts = key.split('+');
+    const matchA = parts[0].includes(a) || a.includes(parts[0]);
+    const matchB = parts[1].includes(b) || b.includes(parts[1]);
+    const matchAB = (parts[0].includes(b) || b.includes(parts[0])) && (parts[1].includes(a) || a.includes(parts[1]));
+    if((matchA && matchB) || matchAB) return val;
+  }
+  // SSRI class matching
+  const ssris = ['sertraline','fluoxetine','paroxetine','citalopram','escitalopram','fluvoxamine','venlafaxine','duloxetine'];
+  if(ssris.some(s=>a.includes(s)||s.includes(a)) && (b.includes('tramadol')||'tramadol'.includes(b))){
+    return IX_DB['tramadol+ssri'];
+  }
+  if(ssris.some(s=>b.includes(s)||s.includes(b)) && (a.includes('tramadol')||'tramadol'.includes(a))){
+    return IX_DB['tramadol+ssri'];
+  }
+  return null;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PAGE SWITCHING
+   ════════════════════════════════════════════════════════════ */
+function page(id, btn){
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tbar-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ════════════════════════════════════════════════════════════
+   DRUG SEARCH — PubChem + RxNorm + OpenFDA via JS
+   ════════════════════════════════════════════════════════════ */
+const PUBCHEM = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
+const RXNORM  = 'https://rxnav.nlm.nih.gov/REST';
+const OPENFDA = 'https://api.fda.gov/drug';
+
+async function jget(url){
+  try{
+    const r = await fetch(url, {headers:{'User-Agent':'DrugBankExplorer/2.2'}});
+    if(!r.ok) return null;
+    return await r.json();
+  }catch{return null}
+}
+
+async function getCID(q){
+  const d = await jget(`${PUBCHEM}/compound/name/${encodeURIComponent(q)}/cids/JSON`);
+  return d?.IdentifierList?.CID?.[0] || null;
+}
+
+async function getProps(cid){
+  const fields = 'MolecularFormula,MolecularWeight,IUPACName,CanonicalSMILES,InChI,InChIKey,XLogP,TPSA,MonoisotopicMass';
+  const d = await jget(`${PUBCHEM}/compound/cid/${cid}/property/${fields}/JSON`);
+  return d?.PropertyTable?.Properties?.[0] || {};
+}
+
+async function getSynonyms(cid){
+  const d = await jget(`${PUBCHEM}/compound/cid/${cid}/synonyms/JSON`);
+  const all = d?.InformationList?.Information?.[0]?.Synonym || [];
+  return all.filter(s=>s.length<50&&!s.startsWith('InChI')&&!/^\d/.test(s)&&s!==s.toUpperCase()).slice(0,12);
+}
+
+async function getDesc(cid){
+  const d = await jget(`${PUBCHEM}/compound/cid/${cid}/description/JSON`);
+  const infos = d?.InformationList?.Information||[];
+  for(const i of infos){ if((i.Description||'').length>80) return i.Description; }
+  return '';
+}
+
+async function getRxNorm(name){
+  const d = await jget(`${RXNORM}/rxcui.json?name=${encodeURIComponent(name)}&allsrc=0`);
+  const rxcui = d?.idGroup?.rxnormId?.[0] || '';
+  if(!rxcui) return {};
+  const info = await jget(`${RXNORM}/rxcui/${rxcui}/properties.json`);
+  const bnData = await jget(`${RXNORM}/rxcui/${rxcui}/related.json?tty=BN`);
+  const brands = [];
+  for(const cg of bnData?.relatedGroup?.conceptGroup||[]){
+    for(const cp of cg.conceptProperties||[]) if(cp.name) brands.push(cp.name);
+  }
+  return {rxcui, rxnorm_name: info?.properties?.name||'', brands:brands.slice(0,8)};
+}
+
+async function getFDA(name){
+  const q = encodeURIComponent(`openfda.generic_name:"${name}"`);
+  const d = await jget(`${OPENFDA}/label.json?search=${q}&limit=1`) ||
+            await jget(`${OPENFDA}/label.json?search="${encodeURIComponent(name)}"&limit=1`);
+  if(!d?.results?.[0]) return {};
+  const r = d.results[0];
+  const first = k => (r[k]||[''])[0].replace(/^\d+\s+[A-Z &]+\n?/,'').trim().slice(0,900);
+  const fda = r.openfda||{};
+  return {
+    indication: first('indications_and_usage'),
+    contraindications: first('contraindications'),
+    mechanism: first('mechanism_of_action'),
+    toxicity: first('overdosage'),
+    description: first('description'),
+    dosage: first('dosage_and_administration'),
+    brands: [...new Set(fda.brand_name||[])].slice(0,6),
+    rxcui_fda: (fda.rxcui||[])[0]||''
+  };
+}
+
+async function getFDADosages(name){
+  const d = await jget(`${OPENFDA}/ndc.json?search=generic_name:"${encodeURIComponent(name)}"&limit=15`);
+  const out=[]; const seen=new Set();
+  for(const r of d?.results||[]){
+    const form=r.dosage_form||'', route=(r.route||[]).join(', ');
+    const str=(r.active_ingredients||[{}])[0].strength||'';
+    const k=`${form}|${route}|${str}`;
+    if(!seen.has(k)&&form){seen.add(k);out.push({form,route,str});}
+  }
+  return out.slice(0,8);
+}
+
+/* ── Curated pharmacology data ── */
+const PHARMA={
+  ibuprofen:{cats:['NSAIDs','Analgesics','Anti-inflammatory','Antipyretics'],atc:['M01AE01 - Ibuprofen','M02AA13 - Ibuprofen'],
+    ph:'Inhibe COX-1 y COX-2, reduciendo síntesis de prostaglandinas. Efectos antiinflamatorio, analgésico y antipirético.',
+    moa:'Inhibición competitiva de ciclooxigenasas COX-1 y COX-2, bloqueando la conversión del ácido araquidónico en prostaglandinas y tromboxano A2.',
+    meta:'Hepático vía CYP2C9 (principal) y CYP2C8. Metabolitos hidroxilados y carboxilados inactivos.',
+    hl:'1.8–2 h',pb:'99% (albúmina)',ba:'>80%',vd:'0.12–0.20 L/kg',elim:'Renal ~90%',
+    fi:['Alimentos retrasan absorción sin reducir biodisponibilidad','Alcohol ↑ riesgo GI','Evitar con anticoagulantes'],
+    targets:[{name:'COX-1 (PTGS1)',gene:'PTGS1',uni:'P23219',org:'Humans',act:['inhibitor']},{name:'COX-2 (PTGS2)',gene:'PTGS2',uni:'P35354',org:'Humans',act:['inhibitor']}],
+    enzymes:[{name:'CYP2C9',gene:'CYP2C9',uni:'P11712',org:'Humans',act:['substrate']},{name:'CYP2C8',gene:'CYP2C8',uni:'P10632',org:'Humans',act:['substrate']}]},
+  metformin:{cats:['Biguanides','Antidiabetic agents','Hypoglycemic agents'],atc:['A10BA02 - Metformin'],
+    ph:'Reduce gluconeogénesis y glucogenólisis hepática. Mejora sensibilidad insulínica periférica sin hipoglucemia.',
+    moa:'Inhibe complejo I mitocondrial → activa AMPK → suprime gluconeogénesis hepática. Reduce absorción intestinal de glucosa.',
+    meta:'No se metaboliza. Se excreta sin cambios.',
+    hl:'4–8.7 h (plasma); 17.6 h (sangre total)',pb:'Prácticamente nula',ba:'50–60%',vd:'654 L',elim:'Renal exclusivamente (OCT2)',
+    fi:['Administrar con comidas (reduce molestias GI)','Alcohol potencia riesgo de acidosis láctica'],
+    targets:[{name:'AMPK (PRKAA1)',gene:'PRKAA1',uni:'Q13131',org:'Humans',act:['activator']},{name:'Complejo I mitocondrial',gene:'NDUFB8',uni:'O95169',org:'Humans',act:['inhibitor']}],
+    enzymes:[]},
+  warfarin:{cats:['Anticoagulants','Vitamin K antagonists','Coumarins'],atc:['B01AA03 - Warfarin'],
+    ph:'Anticoagulante oral. Prolonga TP/INR. Margen terapéutico estrecho (INR 2.0–3.0). Efecto tardío 2–7 días.',
+    moa:'Inhibe VKORC1, bloqueando regeneración de vitamina K reducida necesaria para carboxilación de factores II, VII, IX, X y proteínas C y S.',
+    meta:'Hepático. S-warfarina (más potente) por CYP2C9; R-warfarina por CYP1A2 y CYP3A4. Polimorfismos CYP2C9 (*2, *3) y VKORC1 determinan dosis.',
+    hl:'36–42 h (promedio; rango 20–60 h)',pb:'99%',ba:'~100%',vd:'0.14 L/kg',elim:'Renal (92% metabolitos)',
+    fi:['Vitamina K (espinaca, brócoli) antagoniza efecto','Arándano puede potenciar (inhibe CYP2C9)','Alcohol: consumo crónico induce CYP; agudo inhibe'],
+    targets:[{name:'VKORC1',gene:'VKORC1',uni:'Q9BQB6',org:'Humans',act:['inhibitor']}],
+    enzymes:[{name:'CYP2C9',gene:'CYP2C9',uni:'P11712',org:'Humans',act:['substrate']},{name:'CYP1A2',gene:'CYP1A2',uni:'P05177',org:'Humans',act:['substrate']}]},
+  tramadol:{cats:['Opioid analgesics','SNRIs','Centrally acting analgesics'],atc:['N02AX02 - Tramadol'],
+    ph:'Analgésico de acción central. Doble mecanismo: agonista µ-opioide débil + inhibidor recaptación serotonina/norepinefrina.',
+    moa:'Tramadol y metabolito M1 (CYP2D6) se unen a receptores µ-opioides. Inhibe recaptación presináptica de serotonina y norepinefrina potenciando vías inhibitorias del dolor.',
+    meta:'Hepático extenso. CYP2D6 genera metabolito activo M1 (O-desmetiltramadol). CYP3A4 produce N-desmetiltramadol.',
+    hl:'6 h (tramadol); 7.9 h (M1)',pb:'20%',ba:'~75% oral',vd:'2.6–2.9 L/kg',elim:'Renal 90%',
+    fi:['Alimentos no afectan absorción significativamente','Evitar alcohol (potencia depresión SNC)'],
+    targets:[{name:'µ-opioid receptor',gene:'OPRM1',uni:'P35372',org:'Humans',act:['agonist']},{name:'Serotonin transporter',gene:'SLC6A4',uni:'P31645',org:'Humans',act:['inhibitor']},{name:'Norepinephrine transporter',gene:'SLC6A2',uni:'P23975',org:'Humans',act:['inhibitor']}],
+    enzymes:[{name:'CYP2D6',gene:'CYP2D6',uni:'P10635',org:'Humans',act:['substrate']},{name:'CYP3A4',gene:'CYP3A4',uni:'P08684',org:'Humans',act:['substrate']}]},
+  aspirin:{cats:['NSAIDs','Antiplatelet agents','Analgesics','Antipyretics','Salicylates'],atc:['B01AC06 - Acetylsalicylic acid','N02BA01 - Acetylsalicylic acid'],
+    ph:'Inhibe irreversiblemente COX-1 y COX-2 por acetilación. A dosis bajas: antiagregante plaquetario permanente.',
+    moa:'Acetila irreversiblemente Ser530 de COX-1 y Ser516 de COX-2, inhibiendo síntesis de prostaglandinas y tromboxano A2. En plaquetas (sin núcleo), efecto permanente.',
+    meta:'Hidrólisis rápida a ácido salicílico por esterasas plasmáticas/hepáticas. Conjugación con glicina y excreción renal.',
+    hl:'15–20 min (aspirina); 2–3 h (salicilato, dosis bajas)',pb:'99% (salicilato)',ba:'80–100%',vd:'0.1–0.2 L/kg',elim:'Renal (75–85%)',
+    fi:['Alimentos reducen irritación gástrica','Alcohol aumenta riesgo sangrado GI'],
+    targets:[{name:'COX-1 (PTGS1)',gene:'PTGS1',uni:'P23219',org:'Humans',act:['inhibitor']},{name:'COX-2 (PTGS2)',gene:'PTGS2',uni:'P35354',org:'Humans',act:['inhibitor']}],
+    enzymes:[]},
+};
+
+function pharmaKey(name){
+  const n=name.toLowerCase();
+  for(const k of Object.keys(PHARMA)){if(n.includes(k)||k.includes(n)) return PHARMA[k];}
+  return null;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RENDER HELPERS
+   ════════════════════════════════════════════════════════════ */
+function badge(t,c='b-default'){return `<span class="badge ${c}">${t}</span>`}
+function groupBadge(g){const m={approved:'b-approved',withdrawn:'b-withdrawn',illicit:'b-illicit',nutraceutical:'b-nutra'};return badge(g,m[g]||'b-default')}
+function icard(ti,b){return `<div class="icard"><h4>${ti}</h4>${b}</div>`}
+function txt(ti,t,mx=700){if(!t)return '';return icard(ti,`<p>${t.length>mx?t.slice(0,mx)+'…':t}</p>`)}
+function bcard(ti,its,cl='b-default'){if(!its?.length)return '';return icard(ti,`<div class="badges-wrap">${its.slice(0,16).map(i=>badge(i,cl)).join('')}</div>`)}
+function idRow(l,v){if(!v)return '';return `<div class="id-row"><span class="id-lbl">${l}</span><span class="id-val">${v}</span></div>`}
+function targGroup(ti,items){
+  if(!items?.length)return '';
+  const cs=items.slice(0,8).map(t=>{
+    const acts=(t.act||t.actions||[]).map(a=>`<span class="badge b-action">${a}</span>`).join('');
+    const g=t.gene||t.gene_name?` <span style="color:var(--muted);font-size:0.7rem">· ${t.gene||t.gene_name}</span>`:'';
+    const u=t.uni||t.uniprot?` <span style="color:var(--hint);font-size:0.68rem">[${t.uni||t.uniprot}]</span>`:'';
+    return `<div class="tcard"><div class="tname">${t.name}${g}${u}</div><div class="tsub">${t.org||t.organism||''}</div><div class="tacts">${acts}</div></div>`;
+  }).join('');
+  return `<div style="font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:0.73rem;text-transform:uppercase;letter-spacing:.1em;margin:12px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--border2)">${ti}</div>${cs}`;
+}
+
+/* ── Render full drug card ── */
+function renderDrug(d){
+  const uid='u'+Date.now();
+  const ph=pharmaKey(d.name);
+  const groups=(d.groups||['approved']).map(groupBadge).join('');
+
+  const mets=[
+    {v:d.mw||'—',l:'Peso Mol.'},{v:d.formula||'—',l:'Fórmula'},
+    {v:ph?.hl||d.hl||'—',l:'Vida media'},{v:ph?.ba||'—',l:'Biodisponibilidad'},
+    {v:d.logp||'—',l:'logP'},{v:'Solid',l:'Estado'},
+  ];
+  const mg=mets.map(m=>`<div class="metric-box"><div class="metric-val">${m.v}</div><div class="metric-lbl">${m.l}</div></div>`).join('');
+
+  const t1=`
+    ${txt('Descripción',d.description)}
+    ${txt('Indicaciones',d.indication)}
+    ${bcard('Sinónimos',d.synonyms)}
+    ${bcard('Marcas comerciales',[...new Set([...(d.rxBrands||[]),(d.fdaBrands||[])])].slice(0,8),'b-nutra')}
+    ${bcard('ATC',ph?.atc||[],'b-atc')}
+    ${bcard('Categorías',ph?.cats||[])}`;
+
+  const t2=`
+    ${txt('Farmacodinamia',ph?.ph)}
+    ${txt('Mecanismo de acción',ph?.moa||d.fdaMech)}
+    ${txt('Metabolismo',ph?.meta)}
+    ${txt('Absorción',d.fdaAbsorption)}
+    ${ph?.pb?icard('Unión a proteínas',`<p>${ph.pb}</p>`):''}
+    ${ph?.vd?icard('Volumen de distribución',`<p>${ph.vd}</p>`):''}
+    ${ph?.elim?icard('Vía de eliminación',`<p>${ph.elim}</p>`):''}
+    ${d.fi?.length?icard('Interacciones con alimentos',`<div class="badges-wrap">${(d.fi||[]).map(i=>badge(i,'b-food')).join('')}</div>`):''}`;
+
+  const mol=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+      ${[{v:d.mw,l:'Peso promedio'},{v:d.monomass,l:'Monoisotópico'},{v:d.logp,l:'logP'},{v:d.tpsa&&d.tpsa+'Å²',l:'TPSA'},{v:'—',l:'pKa'},{v:'—',l:'Solubilidad'}].map(m=>`<div class="metric-box"><div class="metric-val" style="font-size:0.78rem">${m.v||'—'}</div><div class="metric-lbl">${m.l}</div></div>`).join('')}
+    </div>
+    ${d.smiles?icard('SMILES',`<p style="font-family:'IBM Plex Mono',monospace;word-break:break-all;font-size:0.68rem">${d.smiles}</p>`):''}
+    ${d.inchikey?icard('InChIKey',`<p style="font-family:'IBM Plex Mono',monospace;font-size:0.73rem">${d.inchikey}</p>`):''}`;
+
+  const t4=`
+    ${txt('Toxicidad y sobredosis',d.fdaTox,900)}
+    ${txt('Contraindicaciones',d.fdaContra)}`;
+
+  const t5=`
+    ${targGroup('🎯 Blancos',ph?.targets||[])}
+    ${targGroup('⚗️ Enzimas',ph?.enzymes||[])}
+    ${!ph?.targets?.length?icard('Blancos moleculares','<p style="color:var(--hint)">Datos curados disponibles para ibuprofen, metformin, warfarin, tramadol, aspirin.</p>'):''}`;
+
+  const dos=d.dosages?.length?icard('Formas farmacéuticas (FDA)',d.dosages.map(ds=>`<div class="id-row"><span class="id-lbl">${ds.form} · ${ds.route||'—'}</span><span class="id-val">${ds.str||'—'}</span></div>`).join('')):'';
+  const t6=`${txt('Dosificación general',d.fdaDosage)}${dos}`;
+  const t7=`${idRow('PubChem CID',d.cid)}${idRow('RxCUI',d.rxcui)}${idRow('RxNorm Name',d.rxnorm_name)}${idRow('InChIKey',d.inchikey)}${idRow('Formula',d.formula)}`;
+
+  const tabs=[{id:'g',l:'📋 Gral',c:t1},{id:'f',l:'⚗️ Farm.',c:t2},{id:'m',l:'🔬 Mol.',c:mol},{id:'s',l:'⚠️ Seg.',c:t4},{id:'t',l:'🧬 Blancos',c:t5},{id:'d',l:'💊 Dosis',c:t6},{id:'i',l:'🔗 IDs',c:t7}];
+  const nav=tabs.map((t,i)=>`<button class="dtab-btn${i?'':' active'}" data-uid="${uid}" data-tab="${t.id}" onclick="dtab(this)">${t.l}</button>`).join('');
+  const panes=tabs.map((t,i)=>`<div id="${uid}-${t.id}" class="dtab-pane${i?'':' active'}">${t.c}</div>`).join('');
+
+  return `<div class="drug-header">
+    <div class="drug-name">${d.name}</div>
+    <div class="drug-id">PubChem CID: ${d.cid}${d.rxcui?' · RxCUI: '+d.rxcui:''}</div>
+    <div class="drug-badges">${groups} <span class="badge b-default">Small Molecule</span></div>
+  </div>
+  <div class="metrics-grid">${mg}</div>
+  <div class="dtabs-nav" id="${uid}-nav">${nav}</div>
+  ${panes}
+  <hr style="border-color:var(--border2);margin:18px 0">`;
+}
+
+function dtab(btn){
+  const uid=btn.dataset.uid, tab=btn.dataset.tab;
+  document.querySelectorAll(`[data-uid="${uid}"]`).forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(`[id^="${uid}-"]`).forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${uid}-${tab}`)?.classList.add('active');
+}
+
+/* ════════════════════════════════════════════════════════════
+   DRUG SEARCH
+   ════════════════════════════════════════════════════════════ */
+function quickSearch(n){
+  document.getElementById('queryInput').value=n;
+  doSearch();
+}
+
+document.getElementById('queryInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
+
+async function doSearch(){
+  const q=document.getElementById('queryInput').value.trim();
+  const btn=document.getElementById('searchBtn');
+  const area=document.getElementById('mainArea');
+  if(!q) return;
+  btn.disabled=true;
+  area.innerHTML=`<div class="spinner-wrap"><div class="spinner"></div><div class="spin-label">Consultando PubChem · RxNorm · OpenFDA…</div></div>`;
+  try{
+    const cid=await getCID(q);
+    if(!cid) throw new Error(`"${q}" no encontrado en PubChem. Intenta en inglés.`);
+    const [props,syns,desc,rxn,fda,dosages]=await Promise.all([
+      getProps(cid),getSynonyms(cid),getDesc(cid),getRxNorm(q),getFDA(q),getFDADosages(q)
+    ]);
+    const drug={
+      name: rxn.rxnorm_name||props.IUPACName||q,
+      cid:String(cid),rxcui:rxn.rxcui,rxnorm_name:rxn.rxnorm_name,
+      mw:props.MolecularWeight?String(props.MolecularWeight):'',
+      formula:props.MolecularFormula,logp:props.XLogP?String(props.XLogP):'',
+      tpsa:props.TPSA?String(props.TPSA)+'':null,
+      monomass:props.MonoisotopicMass?String(props.MonoisotopicMass):'',
+      smiles:props.CanonicalSMILES,inchi:props.InChI,inchikey:props.InChIKey,
+      synonyms:syns,rxBrands:rxn.brands||[],fdaBrands:fda.brands||[],
+      description:desc||fda.description,indication:fda.indication,
+      fdaMech:fda.mechanism,fdaTox:fda.toxicity,fdaContra:fda.contraindications,
+      fdaDosage:fda.dosage,fdaAbsorption:fda.absorption,
+      dosages,groups:['approved'],
+      fi: pharmaKey(q)?.fi||[]
+    };
+    // Clean name
+    const n=drug.name;
+    if(n===n.toUpperCase()||n.includes('(')) drug.name=q.charAt(0).toUpperCase()+q.slice(1).toLowerCase();
+    area.innerHTML=renderDrug(drug);
+  }catch(err){
+    area.innerHTML=`<div class="error-box">⚠ ${err.message||err}</div>`;
+  }
+  btn.disabled=false;
+}
+
+/* ════════════════════════════════════════════════════════════
+   INTERACTION CHECKER
+   ════════════════════════════════════════════════════════════ */
+const slotDebounce=[];
+function slotChange(inp,idx){
+  clearTimeout(slotDebounce[idx]);
+  const ss=document.getElementById('ss'+idx);
+  ss.className='slot-status ss-empty'; ss.textContent='';
+  slotDebounce[idx]=setTimeout(()=>validateSlot(inp,idx),600);
+}
+
+async function validateSlot(inp,idx){
+  const v=inp.value.trim();
+  const ss=document.getElementById('ss'+idx);
+  if(!v){ss.className='slot-status ss-empty';ss.textContent='';return;}
+  const cid=await getCID(v);
+  if(cid){ss.className='slot-status ss-ok';ss.textContent='✓';}
+  else{ss.className='slot-status ss-err';ss.textContent='✗';}
+}
+
+async function checkInteractions(){
+  const inputs=[...document.querySelectorAll('.slot-input')].map(i=>i.value.trim()).filter(Boolean);
+  if(inputs.length<2){
+    document.getElementById('iaResult').innerHTML=`<div class="error-box">⚠ Ingresa al menos 2 fármacos.</div>`;
+    return;
+  }
+  const btn=document.getElementById('iaBtn');
+  const area=document.getElementById('iaResult');
+  btn.disabled=true;
+  area.innerHTML=`<div class="spinner-wrap"><div class="spinner"></div><div class="spin-label">Analizando ${inputs.length} fármacos…</div></div>`;
+
+  // Normalize drug names
+  const names=inputs.map(n=>normDrug(n));
+
+  // Resolve actual names via PubChem/RxNorm
+  const resolved=await Promise.all(names.map(async(n,i)=>{
+    const rxn=await getRxNorm(n);
+    return rxn.rxnorm_name||inputs[i];
+  }));
+
+  // Build all pairs
+  const pairs=[];
+  for(let i=0;i<names.length;i++){
+    for(let j=i+1;j<names.length;j++){
+      pairs.push({a:names[i],b:names[j],aLabel:resolved[i]||inputs[i],bLabel:resolved[j]||inputs[j]});
+    }
+  }
+
+  // Look up interactions
+  const results=[];
+  for(const p of pairs){
+    const ix=fuzzyLookup(p.a,p.b);
+    results.push({...p, ix});
+  }
+
+  // Also try OpenFDA for pairs not in DB
+  for(const r of results){
+    if(!r.ix){
+      const d=await jget(`${OPENFDA}/label.json?search=drug_interactions:"${encodeURIComponent(r.b)}"&limit=1`);
+      if(d?.results?.[0]){
+        const diText=(d.results[0].drug_interactions||[''])[0];
+        if(diText.toLowerCase().includes(r.a.slice(0,5))){
+          r.ix={sev:'unknown',desc:'Posible interacción identificada en el prospecto de la FDA. Consultar información oficial completa.',mgmt:'Revisar ficha técnica completa y consultar con farmacéutico o médico especialista.'};
+        }
+      }
+    }
+  }
+
+  const found=results.filter(r=>r.ix);
+  const none=results.filter(r=>!r.ix);
+
+  // Summary stats
+  const major=found.filter(r=>r.ix.sev==='major').length;
+  const moderate=found.filter(r=>r.ix.sev==='moderate').length;
+  const minor=found.filter(r=>r.ix.sev==='minor').length;
+
+  let html='';
+
+  // Summary header
+  if(found.length){
+    const summaryColor=major?'var(--red)':moderate?'var(--yellow)':'var(--green)';
+    html+=`<div style="background:var(--bg2);border:1px solid ${summaryColor}44;border-radius:10px;padding:13px 15px;margin-bottom:12px">
+      <div style="font-family:'IBM Plex Mono',monospace;color:${summaryColor};font-size:0.82rem;font-weight:600;margin-bottom:6px">
+        ${found.length} interacción${found.length>1?'es':''} encontrada${found.length>1?'s':''}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${major?`<span style="font-size:0.75rem;color:var(--red)">● ${major} mayor${major>1?'es':''}</span>`:''}
+        ${moderate?`<span style="font-size:0.75rem;color:var(--yellow)">● ${moderate} moderada${moderate>1?'s':''}</span>`:''}
+        ${minor?`<span style="font-size:0.75rem;color:var(--green)">● ${minor} menor${minor>1?'es':''}</span>`:''}
+      </div>
+    </div>`;
+  }
+
+  // Sort by severity
+  const sevOrder={major:0,moderate:1,minor:2,unknown:3};
+  found.sort((a,b)=>(sevOrder[a.ix.sev]||3)-(sevOrder[b.ix.sev]||3));
+
+  // Render each interaction
+  for(const r of found){
+    const sev=r.ix.sev;
+    const dotCls=`sev-${sev}`;
+    const badgeCls=`b-${sev}`;
+    const sevLabel={major:'⚠ MAYOR',moderate:'⚡ MODERADA',minor:'↓ MENOR',unknown:'? DESCONOCIDA'}[sev]||sev.toUpperCase();
+    html+=`<div class="ix-card" style="border:1px solid var(--border)">
+      <div class="ix-card-head">
+        <div class="ix-severity ${dotCls}"></div>
+        <div class="ix-pair-name">${r.aLabel} + ${r.bLabel}</div>
+        <span class="badge ${badgeCls}" style="margin-left:auto;font-size:0.63rem">${sevLabel}</span>
+      </div>
+      <div class="ix-body">
+        <div class="ix-desc">${r.ix.desc}</div>
+        <div class="ix-mgmt-label">Manejo clínico</div>
+        <div class="ix-mgmt">${r.ix.mgmt}</div>
+      </div>
+    </div>`;
+  }
+
+  // No interaction pairs
+  if(none.length&&found.length){
+    html+=`<div style="margin-top:10px;font-family:'IBM Plex Mono',monospace;color:var(--hint);font-size:0.7rem;margin-bottom:6px">Sin interacciones documentadas:</div>`;
+    for(const r of none){
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;margin-bottom:4px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+        <span style="font-size:0.79rem;color:var(--muted)">${r.aLabel} + ${r.bLabel}</span>
+        <span style="font-size:0.7rem;color:var(--hint);margin-left:auto">Sin datos conocidos</span>
+      </div>`;
+    }
+  }
+
+  if(!found.length && none.length){
+    html=`<div class="ix-none">
+      ✓ No se encontraron interacciones documentadas<br>
+      <span style="font-size:0.72rem;opacity:.8;margin-top:4px;display:block">entre los fármacos ingresados en nuestra base de datos.<br>Consultar siempre con el farmacéutico o médico tratante.</span>
+    </div>`;
+  }
+
+  html+=`<div style="margin-top:14px;padding:10px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border2)">
+    <div style="font-family:'IBM Plex Mono',monospace;color:var(--hint);font-size:0.65rem;line-height:1.6">
+      ⚕ Información de uso clínico. No reemplaza el juicio clínico del profesional de salud.<br>
+      Fuentes: Base curada + OpenFDA. Klgo. Matías Carreño Román · UC CHRISTUS
+    </div>
+  </div>`;
+
+  area.innerHTML=html;
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
